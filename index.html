@@ -612,12 +612,21 @@ body.scanner-open .btn-scan-fab{display:none}
       </div>
       <div class="row2">
         <div class="field">
-          <label>Modelo</label>
-          <input type="text" id="modelo" placeholder="Ej: M011">
+          <label>Marca</label>
+          <select id="marca" onchange="actualizarModelos()">
+            <option value="">Seleccionar marca...</option>
+            <option value="INELRO">INELRO</option>
+            <option value="IMBERA">IMBERA</option>
+            <option value="BRICKET">BRICKET</option>
+            <option value="METAL FRÍO">METAL FRÍO</option>
+            <option value="OTRO">OTRO</option>
+          </select>
         </div>
         <div class="field">
-          <label>Marca</label>
-          <input type="text" id="marca" placeholder="Ej: Coca-Cola">
+          <label>Modelo</label>
+          <select id="modelo" disabled>
+            <option value="">Primero seleccioná una marca...</option>
+          </select>
         </div>
       </div>
     </div>
@@ -865,6 +874,59 @@ function updateBadge(gridId, badgeId) {
 function getChecked(id) {
   return [...document.querySelectorAll(`#${id} .chk.on`)]
     .map(d => d.querySelector('span').textContent.trim());
+}
+
+
+// ── MARCA / MODELO DE EQUIPO ─────────────────────────────────
+const MODELOS_POR_MARCA = {
+  "INELRO": [
+    "MT 470",
+    "MT400",
+    "INELRO G326 (2 PTAS)",
+    "MT08",
+    "MT17",
+    "MT120"
+  ],
+  "IMBERA": [
+    "G319",
+    "MVC26 (2 PTAS)",
+    "G342 (4PTAS)"
+  ],
+  "BRICKET": [
+    "MASTER 5000"
+  ],
+  "METAL FRÍO": [
+    "METAL FRÍO VB58RH",
+    "METAL FRÍO VB18RH"
+  ],
+  "OTRO": [
+    "OTRO / NO LISTADO"
+  ]
+};
+
+function actualizarModelos() {
+  const marcaSel = document.getElementById('marca');
+  const modeloSel = document.getElementById('modelo');
+  const marca = marcaSel.value;
+  const modelos = MODELOS_POR_MARCA[marca] || [];
+
+  modeloSel.innerHTML = '';
+
+  if (!marca) {
+    modeloSel.disabled = true;
+    modeloSel.innerHTML = '<option value="">Primero seleccioná una marca...</option>';
+    return;
+  }
+
+  modeloSel.disabled = false;
+  modeloSel.innerHTML = '<option value="">Seleccionar modelo...</option>';
+
+  modelos.forEach(modelo => {
+    const opt = document.createElement('option');
+    opt.value = modelo;
+    opt.textContent = modelo;
+    modeloSel.appendChild(opt);
+  });
 }
 
 // ── MATERIALES ────────────────────────────────────────────────
@@ -1303,6 +1365,7 @@ function resetForm() {
   document.querySelectorAll('input:not([type=date])').forEach(i => i.value='');
   document.querySelectorAll('textarea').forEach(t => t.value='');
   document.querySelectorAll('select').forEach(s => s.selectedIndex=0);
+  actualizarModelos();
   document.querySelectorAll('.chk.on').forEach(c => c.classList.remove('on'));
   document.getElementById('badge-fallas').classList.remove('show');
   document.getElementById('badge-trabajos').classList.remove('show');
