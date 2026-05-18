@@ -613,7 +613,7 @@ body.scanner-open .btn-scan-fab{display:none}
       <div class="row2">
         <div class="field">
           <label>A/F N°<span class="req">*</span></label>
-          <input type="text" id="af" placeholder="Activo fijo">
+          <input type="text" id="af" placeholder="Activo fijo" required>
         </div>
         <div class="field">
           <label>N° serie</label>
@@ -866,6 +866,13 @@ function buildChecks(items, gridId, badgeId) {
     d.onclick = () => {
       d.classList.toggle('on');
       updateBadge(gridId, badgeId);
+      if (gridId === 'trabajos-grid' && document.querySelectorAll('#trabajos-grid .chk.on').length > 0) {
+        const tg = document.getElementById('trabajos-grid');
+        tg.classList.remove('error');
+        tg.style.border = '';
+        tg.style.borderRadius = '';
+        tg.style.padding = '';
+      }
       updateProgress();
     };
     g.appendChild(d);
@@ -1326,6 +1333,18 @@ async function enviar() {
       if (!val) { el.classList.add('error'); ok = false; }
       else el.classList.remove('error');
     });
+  // Aviso claro si falta el A/F N° / activo
+  if (!af) {
+    const afEl = document.getElementById('af');
+    if (afEl) {
+      afEl.classList.add('error');
+      afEl.scrollIntoView({behavior:'smooth', block:'center'});
+      setTimeout(() => afEl.focus(), 300);
+    }
+    alert('Debés cargar el A/F N° / número de activo antes de enviar.');
+    return;
+  }
+
   // Razón social: requerida solo si es punto de venta O si la localidad es Corrientes/Misiones
   const razonEl = document.getElementById('razon');
   if (clienteRequerido()) {
@@ -1334,6 +1353,27 @@ async function enviar() {
   } else {
     razonEl.classList.remove('error');
   }
+  // Validar que haya al menos un trabajo/servicio seleccionado
+  const trabajosSeleccionados = getChecked('trabajos-grid');
+  const trabajosGrid = document.getElementById('trabajos-grid');
+
+  if (trabajosSeleccionados.length === 0) {
+    if (trabajosGrid) {
+      trabajosGrid.classList.add('error');
+      trabajosGrid.style.border = '2px solid var(--accent)';
+      trabajosGrid.style.borderRadius = '10px';
+      trabajosGrid.style.padding = '6px';
+      trabajosGrid.scrollIntoView({behavior:'smooth', block:'center'});
+    }
+    alert('Debés seleccionar al menos un servicio realizado.');
+    return;
+  } else if (trabajosGrid) {
+    trabajosGrid.classList.remove('error');
+    trabajosGrid.style.border = '';
+    trabajosGrid.style.borderRadius = '';
+    trabajosGrid.style.padding = '';
+  }
+
   if (!ok) {
     const first = document.querySelector('.error');
     if (first) first.scrollIntoView({behavior:'smooth',block:'center'});
