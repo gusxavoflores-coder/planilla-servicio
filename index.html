@@ -1483,45 +1483,107 @@ function resetForm() {
 }
 // ── FOTO EQUIPO ──────────────────────────────────────────────
 window._fotoEquipoB64 = '';
+window._fotoEquipoURL = '';
 
 function cargarFoto(input) {
-  const file = input.files[0];
+  const file = input.files && input.files[0];
   if (!file) return;
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    const img = new Image();
-    img.onload = function() {
-      // Comprimir: máx 1000px, calidad 0.7
-      const MAX = 1000;
-      let w = img.width, h = img.height;
+
+  const area = document.getElementById('foto-area');
+  area.classList.remove('tiene-foto');
+  area.innerHTML = `
+    <div class="spinner" style="border-color:rgba(196,94,0,.25);border-top-color:#c45e00"></div>
+    <p>Comprimiendo foto...</p>`;
+
+  // Liberar la foto anterior para no acumular memoria
+  window._fotoEquipoB64 = '';
+  if (window._fotoEquipoURL) {
+    URL.revokeObjectURL(window._fotoEquipoURL);
+    window._fotoEquipoURL = '';
+  }
+
+  const objectUrl = URL.createObjectURL(file);
+  window._fotoEquipoURL = objectUrl;
+
+  const img = new Image();
+
+  img.onload = function() {
+    try {
+      // Compresión fuerte para celulares con poca memoria
+      // No lee la foto original en Base64: usa URL temporal y recién después genera un JPG liviano.
+      const MAX = 900;
+      let w = img.naturalWidth || img.width;
+      let h = img.naturalHeight || img.height;
+
       if (w > MAX || h > MAX) {
-        if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
-        else       { w = Math.round(w * MAX / h); h = MAX; }
+        if (w > h) {
+          h = Math.round(h * MAX / w);
+          w = MAX;
+        } else {
+          w = Math.round(w * MAX / h);
+          h = MAX;
+        }
       }
+
       const canvas = document.createElement('canvas');
-      canvas.width = w; canvas.height = h;
-      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-      const b64 = canvas.toDataURL('image/jpeg', 0.7);
+      canvas.width = w;
+      canvas.height = h;
+
+      const ctx = canvas.getContext('2d', { alpha: false });
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, w, h);
+      ctx.drawImage(img, 0, 0, w, h);
+
+      const b64 = canvas.toDataURL('image/jpeg', 0.55);
       window._fotoEquipoB64 = b64;
 
-      // Mostrar preview
-      const area = document.getElementById('foto-area');
       area.innerHTML = `
         <img class="foto-preview" src="${b64}">
         <div class="foto-actions">
-          <span>✓ Foto lista</span>
+          <span>✓ Foto comprimida lista</span>
           <button class="btn-borrar" onclick="borrarFoto(event)">✕ Borrar</button>
         </div>`;
       area.classList.add('tiene-foto');
-    };
-    img.src = e.target.result;
+
+      // Limpiar referencias grandes
+      canvas.width = 1;
+      canvas.height = 1;
+      setTimeout(function() {
+        if (window._fotoEquipoURL === objectUrl) {
+          URL.revokeObjectURL(objectUrl);
+          window._fotoEquipoURL = '';
+        }
+      }, 1000);
+    } catch (err) {
+      console.error(err);
+      window._fotoEquipoB64 = '';
+      area.classList.remove('tiene-foto');
+      area.innerHTML = `
+        <svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        <p>No se pudo comprimir. Probá sacar otra foto.</p>`;
+      alert('No se pudo procesar la foto. Probá cerrando otras apps o sacando una foto más cerca/simple.');
+    }
   };
-  reader.readAsDataURL(file);
+
+  img.onerror = function() {
+    window._fotoEquipoB64 = '';
+    area.classList.remove('tiene-foto');
+    area.innerHTML = `
+      <svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+      <p>No se pudo leer la foto. Probá nuevamente.</p>`;
+    alert('No se pudo leer la foto. Probá nuevamente.');
+  };
+
+  img.src = objectUrl;
 }
 
 function borrarFoto(e) {
-  e.stopPropagation();
+  if (e) e.stopPropagation();
   window._fotoEquipoB64 = '';
+  if (window._fotoEquipoURL) {
+    URL.revokeObjectURL(window._fotoEquipoURL);
+    window._fotoEquipoURL = '';
+  }
   document.getElementById('input-foto').value = '';
   const area = document.getElementById('foto-area');
   area.classList.remove('tiene-foto');
