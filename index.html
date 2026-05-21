@@ -754,7 +754,7 @@ body.scanner-open .btn-scan-fab{display:none}
     </div>
   </div>
 
-    <button class="btn-enviar" id="btn-enviar" onclick="enviar()">
+    <button type="button" class="btn-enviar" id="btn-enviar" onclick="enviar()">
     <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
     Enviar al sistema
   </button>
@@ -1317,6 +1317,40 @@ function parseSel(id) {
   return {num, nombre};
 }
 
+// ── CONTROL ANTI DOBLE ENVÍO ───────────────────────────────────
+let enviandoPlanilla = false;
+
+function bloquearBotonEnvio() {
+  const btn = document.getElementById('btn-enviar');
+  if (!btn) return;
+  btn.disabled = true;
+  btn.style.pointerEvents = 'none';
+  btn.innerHTML = '<div class="spinner"></div> Enviando...';
+}
+
+function liberarBotonEnvio() {
+  enviandoPlanilla = false;
+  const btn = document.getElementById('btn-enviar');
+  if (!btn) return;
+  btn.disabled = false;
+  btn.style.pointerEvents = '';
+  btn.innerHTML = `<svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:none;stroke:#fff;stroke-width:2.2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Enviar al sistema`;
+}
+
+function planillaYaEnviada(nro) {
+  try {
+    return sessionStorage.getItem('planilla_enviada_' + nro) === '1';
+  } catch (e) {
+    return false;
+  }
+}
+
+function marcarPlanillaEnviada(nro) {
+  try {
+    sessionStorage.setItem('planilla_enviada_' + nro, '1');
+  } catch (e) {}
+}
+
 // ── ENVIAR ────────────────────────────────────────────────────
 async function enviar() {
   const razon     = document.getElementById('razon').value.trim();
@@ -1380,9 +1414,20 @@ async function enviar() {
     return;
   }
 
+  if (enviandoPlanilla) {
+    alert('La planilla ya se está enviando. Esperá a que termine antes de tocar de nuevo.');
+    return;
+  }
+
+  if (planillaYaEnviada(nroPlanilla)) {
+    alert('Esta planilla ya fue enviada. Tocá "Nueva planilla" para cargar otra.');
+    return;
+  }
+
+  enviandoPlanilla = true;
+  bloquearBotonEnvio();
+
   const btn = document.getElementById('btn-enviar');
-  btn.disabled = true;
-  btn.innerHTML = '<div class="spinner"></div> Enviando...';
 
   const tec = parseSel('tecnico');
   const alm = {num: document.getElementById('almacen').dataset.num||'', nombre: document.getElementById('almacen').dataset.nombre||''};
@@ -1430,6 +1475,7 @@ async function enviar() {
     });
     const json = await res.json();
     if (json.resultado === "ok") {
+      marcarPlanillaEnviada(nroPlanilla);
       document.getElementById('modal-num-planilla').textContent = 'N° ' + nroPlanilla;
       document.getElementById('modal-ok').classList.add('show');
     } else {
@@ -1438,15 +1484,12 @@ async function enviar() {
   } catch (err) {
     document.getElementById('err-msg').textContent = "No se pudo enviar: " + err.message;
     document.getElementById('modal-err').classList.add('show');
-    btn.disabled = false;
-    resetBtn();
+    liberarBotonEnvio();
   }
 }
 
 function resetBtn() {
-  const btn = document.getElementById('btn-enviar');
-  btn.disabled = false;
-  btn.innerHTML = `<svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:none;stroke:#fff;stroke-width:2.2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Enviar al sistema`;
+  liberarBotonEnvio();
 }
 
 function cerrarModal(id) {
@@ -1454,6 +1497,7 @@ function cerrarModal(id) {
 }
 
 function resetForm() {
+  enviandoPlanilla = false;
   cerrarModal('modal-ok');
   document.querySelectorAll('input:not([type=date])').forEach(i => i.value='');
   document.querySelectorAll('textarea').forEach(t => t.value='');
