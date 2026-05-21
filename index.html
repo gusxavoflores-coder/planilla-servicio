@@ -1468,6 +1468,9 @@ function resetForm() {
   document.getElementById('almacen').dataset.nombre='';
   document.getElementById('cli-buscar').value='';
 
+  // Limpiar foto anterior para que la nueva planilla no arrastre imagen vieja
+  borrarFoto();
+
   borrarFirma('canvas-tec');
   borrarFirma('canvas-cli');
   document.getElementById('cli-dropdown').style.display='none';
